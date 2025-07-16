@@ -1,0 +1,9 @@
+flask==2.2.5
+flask-graphql==2.0.1
+graphene==2.1.9
+graphene-mongo==0.4.4
+graphql-core==2.3.2
+mongoengine==0.24.1
+pymongo<4
+pytz==2023.3
+pytest==7.4.0
