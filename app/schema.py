@@ -6,6 +6,8 @@ from app.services import (
     create_match,
     create_round,
     delete_round,
+    delete_match,
+    swap_teams,
     MatchConflictError,
 )
 from bson import ObjectId
@@ -44,24 +46,10 @@ class DeleteMatchPayload(graphene.ObjectType):
     success = graphene.Boolean()
     message = graphene.String()
 
-class DeleteMatch(graphene.Mutation):
-    class Arguments:
-        match_id = graphene.ID(required=True)
-
-    Output = DeleteMatchPayload
-
-    def mutate(self, info, match_id):
-        from app.services import delete_match
-
-        try:
-            obj_id = to_object_id(match_id)
-            delete_match(obj_id)
-            return DeleteMatchPayload(success=True, message="Match deleted successfully.")
-        except ValueError as e:
-            return DeleteMatchPayload(success=False, message=str(e))
-        except Exception as e:
-            return DeleteMatchPayload(success=False, message="Unexpected error occurred.")
-
+class SwapTeamsPayload(graphene.ObjectType):
+    success = graphene.Boolean()
+    message = graphene.String()
+    swapped_matches = graphene.List(Match)
 
 def to_object_id(id_str):
     try:
@@ -139,10 +127,21 @@ class DeleteRound(graphene.Mutation):
         except Exception as e:
             return DeleteRoundPayload(success=False, message=str(e), deleted_count=0)
 
-class SwapTeamsPayload(graphene.ObjectType):
-    success = graphene.Boolean()
-    message = graphene.String()
-    swapped_matches = graphene.List(Match)
+class DeleteMatch(graphene.Mutation):
+    class Arguments:
+        match_id = graphene.ID(required=True)
+
+    Output = DeleteMatchPayload
+
+    def mutate(self, info, match_id):
+        try:
+            obj_id = to_object_id(match_id)
+            delete_match(obj_id)
+            return DeleteMatchPayload(success=True, message="Match deleted successfully.")
+        except ValueError as e:
+            return DeleteMatchPayload(success=False, message=str(e))
+        except Exception as e:
+            return DeleteMatchPayload(success=False, message="Unexpected error occurred.")
 
 class SwapTeams(graphene.Mutation):
     class Arguments:
@@ -152,8 +151,6 @@ class SwapTeams(graphene.Mutation):
     Output = SwapTeamsPayload
 
     def mutate(self, info, team_a_id, team_b_id):
-        from app.services import swap_teams
-
         try:
             team_a_obj_id = to_object_id(team_a_id)
             team_b_obj_id = to_object_id(team_b_id)
@@ -175,36 +172,6 @@ class Mutation(graphene.ObjectType):
     delete_round = DeleteRound.Field()
     delete_match = DeleteMatch.Field()
     swap_teams = SwapTeams.Field()
-
-class SwapTeamsPayload(graphene.ObjectType):
-    success = graphene.Boolean()
-    message = graphene.String()
-    swapped_matches = graphene.List(Match)
-
-class SwapTeams(graphene.Mutation):
-    class Arguments:
-        team_a_id = graphene.ID(required=True)
-        team_b_id = graphene.ID(required=True)
-
-    Output = SwapTeamsPayload
-
-    def mutate(self, info, team_a_id, team_b_id):
-        from app.services import swap_teams
-
-        try:
-            team_a_obj_id = to_object_id(team_a_id)
-            team_b_obj_id = to_object_id(team_b_id)
-            matches = swap_teams(team_a_obj_id, team_b_obj_id)
-
-            return SwapTeamsPayload(
-                success=True,
-                message=f"Swapped all matches between team {team_a_id} and {team_b_id}",
-                swapped_matches=matches
-            )
-        except ValueError as e:
-            return SwapTeamsPayload(success=False, message=str(e), swapped_matches=[])
-        except Exception:
-            return SwapTeamsPayload(success=False, message="Unexpected error occurred.", swapped_matches=[])
 
 class Query(graphene.ObjectType):
     all_matches = graphene.List(Match)
