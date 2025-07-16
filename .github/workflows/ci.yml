@@ -33,3 +33,7 @@ jobs:
         pip install -r requirements.txt
         pytest
       continue-on-error: true
+
+    - name: Docker push
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/areena-match-making:latest
