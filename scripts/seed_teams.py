@@ -1,8 +1,11 @@
-import pytest
-from app.models import Team
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-@pytest.fixture(scope='module')
-def seeded_teams():
+from app.models import Team
+from mongoengine import connect
+
+def seed_teams():
     team_names = [
         "Flamengo", "Cruzeiro", "Bragantino", "Bahia", "Palmeiras", "Botafogo",
         "Fluminense", "Atlético-MG", "Ceará", "Mirassol", "Corinthians", "Grêmio",
@@ -18,4 +21,8 @@ def seeded_teams():
             team.save()
         teams.append(team)
 
-    return teams
+    print(f"✅ Seeded {len(teams)} teams.")
+
+if __name__ == "__main__":
+    connect("areena_match_making")  # ou o nome do seu banco de produção
+    seed_teams()

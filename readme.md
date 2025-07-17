@@ -155,8 +155,7 @@ A team cannot be scheduled to play two matches at the same time.
 - ➕ Match scoring system with win/loss/tie logic  
 - ➕ Pagination for GraphQL queries  
 - ➕ Advanced tests focused on edge cases in scheduling  
-- 🚀 Deploy to cloud using Kubernetes (AWS EKS or Azure AKS)  
-- 🔁 CI/CD pipeline using GitHub Actions or GitLab CI  
+- 🚀 Deploy to cloud using Kubernetes (AWS EKS or Azure AKS)   
 - 📱 Frontend using Flutter or React  
 - 🔐 Authentication and authorization (JWT/OAuth)  
 
