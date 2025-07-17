@@ -24,5 +24,5 @@ def seed_teams():
     print(f"✅ Seeded {len(teams)} teams.")
 
 if __name__ == "__main__":
-    connect("areena_match_making")  # ou o nome do seu banco de produção
+    connect("areena_match_making_db")
     seed_teams()
