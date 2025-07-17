@@ -6,21 +6,23 @@ from mongoengine import connect, disconnect
 
 @pytest.fixture(scope='module')
 def db():
+    # Disconnect any previous connection, then connect to the test MongoDB database
     disconnect()
-    connect('areena_match_making_test_db')  # Banco de testes MongoDB
+    connect('areena_match_making_test_db')  # MongoDB test database
     yield
+    # Disconnect after all tests in the module complete
     disconnect()
 
 @pytest.fixture(scope='function')
 def clear_matches(db):
-    # Limpa partidas antes e depois de cada teste
+    # Clear all matches before and after each test to ensure test isolation
     Match.objects.delete()
     yield
     Match.objects.delete()
 
 @pytest.fixture(scope='module')
 def teams(db):
-    # Verifica se times existem, senão cria
+    # Ensure test teams exist, create them if they don't
     team_a = Team.objects(name="Fortaleza").first()
     team_b = Team.objects(name="Ceará").first()
     if not team_a:
@@ -32,7 +34,7 @@ def teams(db):
 def test_create_valid_match(teams, clear_matches):
     team_a, team_b = teams
 
-    start_time = datetime(2025, 7, 26, 18, 0, 0)  # Sábado, 18h–20h (válido)
+    start_time = datetime(2025, 7, 26, 18, 0, 0)  # Saturday, 6pm–8pm (valid slot)
     end_time = start_time + timedelta(hours=2)
 
     match = create_match(team_a.id, team_b.id, start_time, end_time)
@@ -46,12 +48,12 @@ def test_create_valid_match(teams, clear_matches):
 def test_create_overlapping_match_raises(teams, clear_matches):
     team_a, team_b = teams
 
-    start_time = datetime(2025, 7, 26, 18, 0, 0)  # Sábado, 18h–20h (válido)
+    start_time = datetime(2025, 7, 26, 18, 0, 0)  # Saturday, 6pm–8pm (valid slot)
     end_time = start_time + timedelta(hours=2)
 
     create_match(team_a.id, team_b.id, start_time, end_time)
 
-    # Tentativa de criar partida que se sobrepõe em pelo menos 30 minutos
+    # Attempt to create a match overlapping by at least 30 minutes (should raise)
     with pytest.raises(MatchConflictError):
         create_match(
             team_a.id, team_b.id,
@@ -62,13 +64,13 @@ def test_create_overlapping_match_raises(teams, clear_matches):
 def test_create_match_respecting_66h_rule(teams, clear_matches):
     team_a, team_b = teams
 
-    # Primeira partida válida
-    start_time = datetime(2025, 7, 27, 11, 0, 0)  # Domingo, 11h–13h
+    # First valid match
+    start_time = datetime(2025, 7, 27, 11, 0, 0)  # Sunday, 11am–1pm
     end_time = start_time + timedelta(hours=2)
     create_match(team_a.id, team_b.id, start_time, end_time)
 
-    # Tentativa de criar partida muito próxima (violando regra de 66 horas)
-    too_soon_start = datetime(2025, 7, 28, 20, 0, 0)  # Segunda, 20h–22h (válido, mas dentro do intervalo)
+    # Attempt to create a match too soon (violating 66-hour rest rule)
+    too_soon_start = datetime(2025, 7, 28, 20, 0, 0)  # Monday, 8pm–10pm (valid slot but too close)
     too_soon_end = too_soon_start + timedelta(hours=2)
 
     with pytest.raises(MatchConflictError):

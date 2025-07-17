@@ -5,7 +5,7 @@ import random
 class MatchConflictError(Exception):
     pass
 
-# Regras de horários válidos por dia da semana
+# Allowed match time slots by weekday
 ALLOWED_SLOTS = {
     "Saturday": [(18, 0, 20, 0), (20, 30, 22, 30)],
     "Sunday": [(11, 0, 13, 0), (16, 0, 18, 0), (20, 30, 22, 30)],
@@ -15,6 +15,9 @@ ALLOWED_SLOTS = {
 }
 
 def is_valid_timeslot(start_time, end_time):
+    """
+    Check if the given start and end times fall within an allowed slot for that weekday.
+    """
     day_name = start_time.strftime('%A')
     allowed_slots = ALLOWED_SLOTS.get(day_name, [])
 
@@ -26,6 +29,9 @@ def is_valid_timeslot(start_time, end_time):
     return False
 
 def create_match(home_team_id, away_team_id, start_time, end_time):
+    """
+    Creates a match between two teams at the given time if there are no conflicts.
+    """
     if not is_valid_timeslot(start_time, end_time):
         raise MatchConflictError("Match must be scheduled in an allowed time slot and day.")
 
@@ -34,6 +40,7 @@ def create_match(home_team_id, away_team_id, start_time, end_time):
     if not home_team or not away_team:
         raise ValueError("One or both teams not found")
 
+    # Check for time overlap with other matches involving either team
     conflicting_matches = Match.objects.filter(
         start_time__lt=end_time,
         end_time__gt=start_time,
@@ -49,6 +56,7 @@ def create_match(home_team_id, away_team_id, start_time, end_time):
     if conflicting_matches:
         raise MatchConflictError("One or both teams are already scheduled for another match during this time.")
 
+    # Check 66-hour rest rule for both teams
     cutoff_start = start_time - timedelta(hours=66)
     cutoff_end = end_time + timedelta(hours=66)
 
@@ -85,6 +93,9 @@ def create_match(home_team_id, away_team_id, start_time, end_time):
     return match
 
 def create_round(base_date: datetime):
+    """
+    Creates a full round of 10 matches using the allowed weekend slots.
+    """
     teams = list(Team.objects.all())
     if len(teams) < 20:
         raise ValueError("A full round requires at least 20 teams.")
@@ -92,21 +103,16 @@ def create_round(base_date: datetime):
     random.shuffle(teams)
     pairs = list(zip(teams[::2], teams[1::2]))
 
-    # Para 20 times, temos 10 jogos, logo precisamos de 10 slots de horários
-
-    # Vamos definir os slots para o round de final de semana (weekend round)
     weekend_slots = [
         ("Saturday", ALLOWED_SLOTS["Saturday"][0]),
         ("Saturday", ALLOWED_SLOTS["Saturday"][1]),
         ("Saturday", ALLOWED_SLOTS["Saturday"][0]),
         ("Saturday", ALLOWED_SLOTS["Saturday"][1]),
-
         ("Sunday", ALLOWED_SLOTS["Sunday"][0]),
         ("Sunday", ALLOWED_SLOTS["Sunday"][1]),
         ("Sunday", ALLOWED_SLOTS["Sunday"][2]),
         ("Sunday", ALLOWED_SLOTS["Sunday"][0]),
         ("Sunday", ALLOWED_SLOTS["Sunday"][1]),
-
         ("Monday", ALLOWED_SLOTS["Monday"][0]),
     ]
 
@@ -129,6 +135,9 @@ def create_round(base_date: datetime):
     return matches
 
 def delete_round(base_date: datetime):
+    """
+    Deletes all matches scheduled between the given date and 7 days after.
+    """
     round_days = ["Saturday", "Sunday", "Monday"]
     start_of_round = base_date.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_round = start_of_round + timedelta(days=7)
@@ -143,6 +152,9 @@ def delete_round(base_date: datetime):
     return count
 
 def delete_match(match_id):
+    """
+    Deletes a match by its ID.
+    """
     match = Match.objects(id=match_id).first()
     if not match:
         raise ValueError("Match not found")
@@ -150,6 +162,9 @@ def delete_match(match_id):
     return True
 
 def swap_teams(team_a_id, team_b_id):
+    """
+    Swaps all occurrences of team A and team B in existing matches.
+    """
     team_a = Team.objects(id=team_a_id).first()
     team_b = Team.objects(id=team_b_id).first()
     if not team_a or not team_b:

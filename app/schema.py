@@ -14,12 +14,15 @@ from bson import ObjectId
 from datetime import datetime
 import pytz
 
+# Initialize MongoDB connection
 init_db()
 
+# GraphQL object type for Team model
 class Team(MongoengineObjectType):
     class Meta:
         model = TeamModel
 
+# GraphQL object type for Match model, with custom field mapping
 class Match(MongoengineObjectType):
     class Meta:
         model = MatchModel
@@ -27,6 +30,7 @@ class Match(MongoengineObjectType):
     startTime = graphene.DateTime(source='start_time')
     endTime = graphene.DateTime(source='end_time')
 
+# Payloads for mutation responses
 class CreateMatchPayload(graphene.ObjectType):
     match = graphene.Field(Match)
     success = graphene.Boolean()
@@ -51,12 +55,14 @@ class SwapTeamsPayload(graphene.ObjectType):
     message = graphene.String()
     swapped_matches = graphene.List(Match)
 
+# Converts a string to a MongoDB ObjectId, or raises a ValueError
 def to_object_id(id_str):
     try:
         return ObjectId(id_str)
     except Exception:
         raise ValueError(f"Invalid ID format: {id_str}")
 
+# Ensures datetime object is timezone-aware and in UTC
 def ensure_utc(dt):
     if isinstance(dt, str):
         dt = datetime.fromisoformat(dt)
@@ -66,6 +72,7 @@ def ensure_utc(dt):
         dt = dt.astimezone(pytz.UTC)
     return dt
 
+# Mutation for creating a match between two teams
 class CreateMatch(graphene.Mutation):
     class Arguments:
         home_team_id = graphene.ID(required=True)
@@ -96,9 +103,10 @@ class CreateMatch(graphene.Mutation):
         except ValueError as e:
             return CreateMatchPayload(match=None, success=False, message=str(e))
 
-        except Exception as e:
+        except Exception:
             return CreateMatchPayload(match=None, success=False, message="Unexpected error occurred.")
 
+# Mutation to automatically create a round of matches starting from a base date
 class CreateRound(graphene.Mutation):
     class Arguments:
         base_date = graphene.String(required=False)
@@ -113,6 +121,7 @@ class CreateRound(graphene.Mutation):
         except Exception as e:
             return CreateRoundPayload(success=False, message=str(e), matches=[])
 
+# Mutation to delete all matches in a round based on date
 class DeleteRound(graphene.Mutation):
     class Arguments:
         base_date = graphene.String(required=False)
@@ -127,6 +136,7 @@ class DeleteRound(graphene.Mutation):
         except Exception as e:
             return DeleteRoundPayload(success=False, message=str(e), deleted_count=0)
 
+# Mutation to delete a single match by its ID
 class DeleteMatch(graphene.Mutation):
     class Arguments:
         match_id = graphene.ID(required=True)
@@ -140,9 +150,10 @@ class DeleteMatch(graphene.Mutation):
             return DeleteMatchPayload(success=True, message="Match deleted successfully.")
         except ValueError as e:
             return DeleteMatchPayload(success=False, message=str(e))
-        except Exception as e:
+        except Exception:
             return DeleteMatchPayload(success=False, message="Unexpected error occurred.")
 
+# Mutation to swap all scheduled matches between two teams
 class SwapTeams(graphene.Mutation):
     class Arguments:
         team_a_id = graphene.ID(required=True)
@@ -166,6 +177,7 @@ class SwapTeams(graphene.Mutation):
         except Exception:
             return SwapTeamsPayload(success=False, message="Unexpected error occurred.", swapped_matches=[])
 
+# Root mutation class
 class Mutation(graphene.ObjectType):
     create_match = CreateMatch.Field()
     create_round = CreateRound.Field()
@@ -173,6 +185,7 @@ class Mutation(graphene.ObjectType):
     delete_match = DeleteMatch.Field()
     swap_teams = SwapTeams.Field()
 
+# Root query class
 class Query(graphene.ObjectType):
     all_matches = graphene.List(Match)
     all_teams = graphene.List(Team)
@@ -183,4 +196,5 @@ class Query(graphene.ObjectType):
     def resolve_all_teams(self, info):
         return list(TeamModel.objects.all())
 
+# GraphQL schema definition
 schema = graphene.Schema(query=Query, mutation=Mutation)

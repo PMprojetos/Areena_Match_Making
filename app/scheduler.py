@@ -3,6 +3,7 @@ from app.services import create_match, MatchConflictError
 from datetime import timedelta, datetime, time
 import pytz
 
+# Allowed match time slots by weekday (0 = Monday, ..., 6 = Sunday)
 ALLOWED_SLOTS = {
     5: [  # Saturday
         (time(18, 0), time(20, 0)),
@@ -27,6 +28,7 @@ ALLOWED_SLOTS = {
 }
 
 def schedule_next_match(start_after, duration=timedelta(hours=2)):
+    # Ensure the timestamp is timezone-aware and converted to UTC
     if start_after.tzinfo is None:
         start_after = start_after.replace(tzinfo=pytz.UTC)
     else:
@@ -36,21 +38,21 @@ def schedule_next_match(start_after, duration=timedelta(hours=2)):
     n = len(teams)
 
     current_day = start_after.date()
-    max_days = 30  # tentativas futuras
+    max_days = 30  # Maximum number of days to search ahead
 
     for day_offset in range(max_days):
         day = current_day + timedelta(days=day_offset)
         weekday = day.weekday()
 
         if weekday not in ALLOWED_SLOTS:
-            continue
+            continue  # Skip days that have no allowed time slots
 
         for slot_start, slot_end in ALLOWED_SLOTS[weekday]:
             proposed_start = datetime.combine(day, slot_start, tzinfo=pytz.UTC)
             proposed_end = datetime.combine(day, slot_end, tzinfo=pytz.UTC)
 
             if proposed_start < start_after:
-                continue  # ignora slots já passados
+                continue  # Skip slots that are already in the past
 
             for i in range(n):
                 for j in range(i + 1, n):
@@ -60,8 +62,8 @@ def schedule_next_match(start_after, duration=timedelta(hours=2)):
                     try:
                         return create_match(home_team.id, away_team.id, proposed_start, proposed_end)
                     except MatchConflictError:
-                        continue
+                        continue  # Conflict with existing match — try next combination
                     except Exception:
-                        continue
+                        continue  # Skip any unexpected error silently
 
-    return None  # nenhuma combinação válida encontrada
+    return None  # No valid match found within the time range
