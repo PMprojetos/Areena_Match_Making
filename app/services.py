@@ -1,5 +1,6 @@
 from app.models import Match, Team
 from datetime import datetime, timedelta
+from app.models import Match, Team, Venue
 import random
 
 class MatchConflictError(Exception):
@@ -28,7 +29,7 @@ def is_valid_timeslot(start_time, end_time):
             return True
     return False
 
-def create_match(home_team_id, away_team_id, start_time, end_time):
+def create_match(home_team_id, away_team_id, start_time, end_time, venue_id):
     """
     Creates a match between two teams at the given time if there are no conflicts.
     """
@@ -37,6 +38,7 @@ def create_match(home_team_id, away_team_id, start_time, end_time):
 
     home_team = Team.objects(id=home_team_id).first()
     away_team = Team.objects(id=away_team_id).first()
+    venue = Venue.objects(id=venue_id).first()
     if not home_team or not away_team:
         raise ValueError("One or both teams not found")
 
@@ -87,7 +89,8 @@ def create_match(home_team_id, away_team_id, start_time, end_time):
         home_team=home_team,
         away_team=away_team,
         start_time=start_time,
-        end_time=end_time
+        end_time=end_time,
+        venue = venue
     )
     match.save()
     return match
